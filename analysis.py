@@ -215,6 +215,7 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
             newrow.setValue("YEAR", 2000 + row[1])
         newrow.setValue("TCD", tcd_threshold)
         newrow.setValue("BIOMASS_LOSS_MG", row[2])
+        # TODO: Check actual carbon emissions formula
         newrow.setValue("EMISSIONS_MT_CO2", row[2]*.5*3.67/1000000)
         newrows.insertRow(newrow)
 
