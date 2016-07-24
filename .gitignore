@@ -1,4 +1,7 @@
-tests/test_data_temp_folder/*
+*.pyt.xml
+templates/mask_lossyear.rft.xml
+templates/tcd_mask.rft.xml
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
