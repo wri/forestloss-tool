@@ -1,5 +1,5 @@
 *.pyt.xml
-templates/mask_lossyear.rft.xml
+templates/mask_mosaic.rft.xml
 templates/tcd_mask.rft.xml
 
 
