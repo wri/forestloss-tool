@@ -83,7 +83,7 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     else:
         raise Exception("No features found in input Layer")
 
-def mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages):
+def mask_mosaic(mosaic, tcd_mosaic, tcd_threshold, messages):
     '''
     Mask loss year with TCD threshold
     :param lossyear_mosaic:
@@ -96,11 +96,11 @@ def mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages):
 
     # Create raster function template file
     remap_tcd = raster_function.update_tcd_mask(tcd_threshold)
-    mask_lossyear = raster_function.mask_lossyear(tcd_mosaic)
+    mask = raster_function.mask_mosaic(tcd_mosaic)
 
     # Load raster functions
     raster_function.replace_raster_function(tcd_mosaic, remap_tcd)
-    raster_function.replace_raster_function(lossyear_mosaic, mask_lossyear)
+    raster_function.replace_raster_function(mosaic, mask)
 
 
 def clean_up(messages):
@@ -135,7 +135,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
     tcd_mosaic = os.path.join(mosaic_workspace, "tcd")
 
     # Mask loss year using the TCD threshold
-    mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
+    mask_mosaic(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
 
     # Calculating annual loss for every input feature
     zonal_stats_table = zonal_stats(lossyear_mosaic, area_mosaic, in_features, messages)
@@ -186,7 +186,10 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
     tcd_mosaic = os.path.join(mosaic_workspace, "tcd")
 
     # Mask loss year using the TCD threshold
-    mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
+    mask_mosaic(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
+
+     # Mask biomass using the TCD threshold
+    mask_mosaic(biomass_mosaic, tcd_mosaic, tcd_threshold, messages)
 
     # Calculating annual loss for every input feature
     zonal_stats_table = zonal_stats(lossyear_mosaic, biomass_mosaic, in_features, messages)

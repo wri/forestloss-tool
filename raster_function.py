@@ -4,19 +4,17 @@ from lxml import objectify
 
 
 
-def mask_lossyear(tcd_mosaic):
+def mask_mosaic(tcd_mosaic):
     '''
     Create a raster function template to mask forest loss mosaic with tree cover density threshold
     This function uses the template_tcd_mask raster function template and writes results to tcd_mask
-    :param tcd_threshold:
-    :param loss_mosaic:
     :param tcd_mosaic:
     :return:
     '''
 
     abspath = os.path.abspath(__file__)
     dir_name = os.path.dirname(abspath)
-    template = os.path.join(dir_name, r"templates\mask_lossyear_template.rft.xml")
+    template = os.path.join(dir_name, r"templates\mask_mosaic_template.rft.xml")
 
     tcd_gdb = os.path.dirname(tcd_mosaic)
     tcd_gdb_name = os.path.dirname(tcd_gdb)
@@ -42,7 +40,7 @@ def mask_lossyear(tcd_mosaic):
             objectify.deannotate(value.Value.Name, cleanup_namespaces=True)
             objectify.xsiannotate(value.Value.Name)
 
-    mask_path = os.path.join(dir_name,r"templates\mask_lossyear.rft.xml")
+    mask_path = os.path.join(dir_name,r"templates\mask_mosaic.rft.xml")
     tree.write(mask_path)
     return mask_path
 
