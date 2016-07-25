@@ -37,6 +37,10 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     while not done:
         # Create list to count all features
         id = list()
+
+        # Count number of rows in input layer
+        row_count = int(arcpy.GetCount_management(in_layer).getOutput(0))
+
         with arcpy.da.SearchCursor(in_layer, ['OID@', 'Shape@']) as cursor:
             for row in cursor:
                 id.append(row[0])
@@ -54,7 +58,7 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
                     if not math.isnan(arcpy.env.extent.XMin):
                         # Sum area values for every year in mask lossyear layer
                         # Save results in temporary table and add feature ID as extra column
-                        messages.AddMessage("Process feature ID {}".format(row[0]))
+                        messages.AddMessage("Process feature {} out of {}".format(len(processed) + 1, row_count))
                         temp_table = "in_memory/feature_{}".format(row[0])
                         temp_tables.append(temp_table)
 
@@ -199,8 +203,8 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
     arcpy.AddField_management(out_table, "FID", "LONG")
     arcpy.AddField_management(out_table, "YEAR", "TEXT")
     arcpy.AddField_management(out_table, "TCD", "LONG")
-    arcpy.AddField_management(out_table, "BIOMASS", "DOUBLE")
-    arcpy.AddField_management(out_table, "CARBON", "DOUBLE")
+    arcpy.AddField_management(out_table, "BIOMASS_LOSS_MG", "DOUBLE")
+    arcpy.AddField_management(out_table, "EMISSIONS_MT_CO2", "DOUBLE")
 
     # Select relevant fields from merged table
     cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"])
@@ -213,7 +217,7 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
         newrow = newrows.newRow()
         newrow.setValue("FID", row[0])
         if row[1] == 0:
-            newrow.setValue("YEAR", "no loss")
+            newrow.setValue("YEAR", "remaining biomass")
         else:
             newrow.setValue("YEAR", 2000 + row[1])
         newrow.setValue("TCD", tcd_threshold)

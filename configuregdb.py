@@ -102,15 +102,15 @@ class ConfigureGDB(object):
         '''
         if parameters[0].altered:
             mosaic_workspace = parameters[0].valueAsText
-            if parameters[1].altered and arcpy.Exists(os.path.join(mosaic_workspace, "lossyear")):
+            if parameters[1].values and arcpy.Exists(os.path.join(mosaic_workspace, "lossyear")):
                 parameters[1].setErrorMessage("Selected GDB already has a lossyear mosaic dataset")
-            if parameters[2].altered and arcpy.Exists(os.path.join(mosaic_workspace, "gain")):
+            if parameters[2].values and arcpy.Exists(os.path.join(mosaic_workspace, "gain")):
                 parameters[2].setErrorMessage("Selected GDB already has a gain mosaic dataset")
-            if parameters[3].altered and arcpy.Exists(os.path.join(mosaic_workspace, "area")):
+            if parameters[3].values and arcpy.Exists(os.path.join(mosaic_workspace, "area")):
                 parameters[3].setErrorMessage("Selected GDB already has a area mosaic dataset")
-            if parameters[4].altered and arcpy.Exists(os.path.join(mosaic_workspace, "tcd")):
+            if parameters[4].values and arcpy.Exists(os.path.join(mosaic_workspace, "tcd")):
                 parameters[4].setErrorMessage("Selected GDB already has a tcd mosaic dataset")
-            if parameters[5].altered and arcpy.Exists(os.path.join(mosaic_workspace, "biomass")):
+            if parameters[5].values and arcpy.Exists(os.path.join(mosaic_workspace, "biomass")):
                 parameters[5].setErrorMessage("Selected GDB already has a biomass mosaic dataset")
 
         return
