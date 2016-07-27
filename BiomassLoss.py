@@ -1,19 +1,17 @@
 import os
-
 import arcpy
-
 import analysis
 import util
 
 
-class TreeCoverLoss(object):
+class BiomassLoss(object):
     '''
     Tree cover loss tool
     '''
 
     def __init__(self):
-        self.label       = "Tree Cover Loss"
-        self.description = "Calculate tree cover loss for a given feature class " + \
+        self.label       = "Biomass Loss"
+        self.description = "Calculate biomass loss for a given feature class " + \
                            "Define custom threshold for tree cover density"
         self.canRunInBackground = False
 
@@ -63,7 +61,17 @@ class TreeCoverLoss(object):
             parameterType="Required",
             direction="Output")
 
-        parameters = [in_features, tcd_threshold, mosaic_workspace, out_table]
+        # Make output table a pivot table
+        pivot = arcpy.Parameter(
+            displayName="Make output a pivot table",
+            name="pivot",
+            datatype="GPBoolean",
+            parameterType="Required",
+            direction="Output")
+
+        pivot.value = True
+
+        parameters = [in_features, tcd_threshold, mosaic_workspace, out_table, pivot]
 
         return parameters
 
@@ -105,8 +113,10 @@ class TreeCoverLoss(object):
 
             if not util.mosaic_datasets_exist([os.path.join(mosaic_workspace, "lossyear"),
                                                os.path.join(mosaic_workspace, "tcd"),
+                                               os.path.join(mosaic_workspace, "biomass"),
                                                os.path.join(mosaic_workspace, "area")]):
-                parameters[2].setErrorMessage("Geodatabase must contain loss, area and tcd mosaic datasets")
+                parameters[2].setErrorMessage("Geodatabase must contain loss, biomass and tcd mosaic datasets")
+
         return
 
     def execute(self, parameters, messages):
@@ -127,5 +137,6 @@ class TreeCoverLoss(object):
         tcd_threshold = int(parameters[1].valueAsText)
         mosaic_workspace = parameters[2].valueAsText
         out_table = parameters[3].valueAsText
+        pivot = bool(parameters[4].valueAsText)
 
-        analysis.tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages)
+        analysis.biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages)

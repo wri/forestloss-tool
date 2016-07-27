@@ -1,6 +1,6 @@
 from configuregdb import ConfigureGDB
-from treecover_loss import TreeCoverLoss
-from biomass_loss import BioMassLoss
+from TreeCoverLoss import TreeCoverLoss
+from BiomassLoss import BiomassLoss
 
 class Toolbox(object):
     '''
@@ -12,5 +12,5 @@ class Toolbox(object):
         self.alias = "gfw-analysis"
 
         # List of tool classes associated with this toolbox
-        self.tools = [TreeCoverLoss, BioMassLoss, ConfigureGDB]
+        self.tools = [TreeCoverLoss, BiomassLoss, ConfigureGDB]
 

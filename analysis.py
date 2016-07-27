@@ -2,7 +2,7 @@ import math
 import os
 import arcpy
 import raster_function
-
+import util
 
 def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     """
@@ -30,6 +30,8 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     # Create lists to count if all features were processed
     processed = list()
 
+    # Count number of rows in input layer
+    row_count = int(arcpy.GetCount_management(in_layer).getOutput(0))
 
     # Calculate lossyear for input features
     # Loop as long over features until all were processed
@@ -37,9 +39,6 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     while not done:
         # Create list to count all features
         id = list()
-
-        # Count number of rows in input layer
-        row_count = int(arcpy.GetCount_management(in_layer).getOutput(0))
 
         with arcpy.da.SearchCursor(in_layer, ['OID@', 'Shape@']) as cursor:
             for row in cursor:
@@ -97,7 +96,7 @@ def mask_lossyear(mosaic, tcd_mosaic, tcd_threshold, messages):
     :return:
     """
 
-    messages.AddMessage("Load Raster functions")
+    messages.AddMessage("Apply TCD mask to lossyear mosaic")
 
     # Create raster function template file
     mask_function = raster_function.mask_lossyear_mosaic(tcd_mosaic, tcd_threshold, messages)
@@ -109,20 +108,20 @@ def mask_lossyear(mosaic, tcd_mosaic, tcd_threshold, messages):
 
 def convert_biomass(mosaic, area_mosaic, messages):
     """
-    Apply biomass raster function to into biomass mosaic
+    Apply biomass raster function to biomass mosaic
     :param mosaic: string
     :param area_mosaic: string
     :param messages: object
     :return:
     """
 
-    messages.AddMessage("Load Raster functions")
+    messages.AddMessage("Apply biomass raster function to biomass mosaic")
 
     # Create raster function template file
-    raster_function = raster_function.convert_biomass_mosaic(area_mosaic, messages)
+    rf = raster_function.convert_biomass_mosaic(area_mosaic, messages)
 
     # Load raster functions
-    raster_function.replace_raster_function(mosaic, raster_function, messages)
+    raster_function.replace_raster_function(mosaic, rf, messages)
 
     return
 
@@ -142,14 +141,15 @@ def clean_up(messages):
 
     return
 
-def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
+def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages):
     '''
     Calculate tree cover loss for input features
-    :param in_features:
-    :param tcd_threshold:
-    :param mosaic_workspace:
-    :param out_table:
-    :param messages:
+    :param in_features: string
+    :param tcd_threshold: integer
+    :param mosaic_workspace: string
+    :param out_table: string
+    :param pivot: boolean
+    :param messages: object
     :return:
     '''
 
@@ -164,18 +164,25 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
     # Calculating annual loss for every input feature
     zonal_stats_table = zonal_stats(lossyear_mosaic, area_mosaic, in_features, messages)
 
+    # If final output is a pivot table write format table into a temp file,
+    # IF not create directly output table
+    if pivot:
+        format_table = "in_memory/format_table"
+    else:
+        format_table = out_table
+
     # Create final output table and define fields
-    arcpy.CreateTable_management (os.path.dirname(out_table), os.path.basename(out_table))
-    arcpy.AddField_management(out_table, "FID", "LONG")
-    arcpy.AddField_management(out_table, "YEAR", "TEXT")
-    arcpy.AddField_management(out_table, "TCD", "LONG")
-    arcpy.AddField_management(out_table, "LOSS_M2", "DOUBLE")
+    arcpy.CreateTable_management (os.path.dirname(format_table), os.path.basename(format_table))
+    arcpy.AddField_management(format_table, "FID", "LONG")
+    arcpy.AddField_management(format_table, "YEAR", "TEXT")
+    arcpy.AddField_management(format_table, "TCD", "LONG")
+    arcpy.AddField_management(format_table, "LOSS_M2", "DOUBLE")
 
     # Select relevant fields from merged table
     cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"], sql_clause=(None, "ORDER BY FID DESC"))
 
     # Create Insert cursor for output table
-    newrows = arcpy.InsertCursor(out_table)
+    newrows = arcpy.InsertCursor(format_table)
 
     # Loop over all rows in merge table and write results into output table
     for row in cursor:
@@ -186,23 +193,31 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
         elif row[1] == 0:
             newrow.setValue("YEAR", "no loss")
         else:
-            newrow.setValue("YEAR", 2000 + row[1])
+            newrow.setValue("YEAR", "Year {}".format(2000 + row[1]))
         newrow.setValue("TCD", tcd_threshold)
         newrow.setValue("LOSS_M2", row[2])
         newrows.insertRow(newrow)
 
+    if pivot:
+        # Flatten table.
+        # One line per feature, with seperate columns for each year
+        arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "LOSS_M2", out_table)
+
     # Delete all in_memory datasets
     clean_up(messages)
 
+    return
 
-def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
+
+def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages):
     '''
-    Calculate tree cover loss for input features
-    :param in_features:
-    :param tcd_threshold:
-    :param mosaic_workspace:
-    :param out_table:
-    :param messages:
+    Calculate biomass loss for input features
+    :param in_features: string
+    :param tcd_threshold: integer
+    :param mosaic_workspace: string
+    :param out_table: string
+    :param pivot: boolean
+    :param messages: object
     :return:
     '''
 
@@ -221,19 +236,25 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
     # Calculating annual loss for every input feature
     zonal_stats_table = zonal_stats(lossyear_mosaic, biomass_mosaic, in_features, messages)
 
+    # If final output is a pivot table write format table into a temp file,
+    # IF not create directly output table
+    if pivot:
+        format_table = "in_memory/format_table"
+    else:
+        format_table = out_table
     # Create final output table and define fields
-    arcpy.CreateTable_management (os.path.dirname(out_table), os.path.basename(out_table))
-    arcpy.AddField_management(out_table, "FID", "LONG")
-    arcpy.AddField_management(out_table, "YEAR", "TEXT")
-    arcpy.AddField_management(out_table, "TCD", "LONG")
-    arcpy.AddField_management(out_table, "BIOMASS_LOSS_MG", "DOUBLE")
-    arcpy.AddField_management(out_table, "EMISSIONS_MT_CO2", "DOUBLE")
+    arcpy.CreateTable_management (os.path.dirname(format_table), os.path.basename(format_table))
+    arcpy.AddField_management(format_table, "FID", "LONG")
+    arcpy.AddField_management(format_table, "YEAR", "TEXT")
+    arcpy.AddField_management(format_table, "TCD", "LONG")
+    arcpy.AddField_management(format_table, "BIOMASS_LOSS_MG", "DOUBLE")
+    arcpy.AddField_management(format_table, "EMISSIONS_MT_CO2", "DOUBLE")
 
     # Select relevant fields from merged table
     cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"], sql_clause=(None, "ORDER BY FID DESC"))
 
     # Create Insert cursor for output table
-    newrows = arcpy.InsertCursor(out_table)
+    newrows = arcpy.InsertCursor(format_table)
 
     # Loop over all rows in merge table and write results into output table
     for row in cursor:
@@ -244,13 +265,28 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
         elif row[1] == 0:
             newrow.setValue("YEAR", "no biomass loss")
         else:
-            newrow.setValue("YEAR", 2000 + row[1])
+            newrow.setValue("YEAR", "Year {}".format(2000 + row[1]))
         newrow.setValue("TCD", tcd_threshold)
         newrow.setValue("BIOMASS_LOSS_MG", row[2])
         newrow.setValue("EMISSIONS_MT_CO2", row[2]*.5*3.67/1000000)
         newrows.insertRow(newrow)
 
+    if pivot:
+        # Flatten table.
+        # One line per feature, with seperate columns for each year
+        arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "BIOMASS_LOSS_MG", out_table)
+
     # Delete all in_memory datasets
     clean_up(messages)
 
+    return
 
+arcpy.CheckOutExtension("Spatial")
+arcpy.env.overwriteOutput = True
+m = util.messages()
+
+biomass_loss(r"C:\Users\Thomas.Maschler\Documents\Atlas\CMR\atlas_forestier.mdb\unites_administratives\departements",
+             30,
+             r"C:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb",
+             "rC:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb\dep",
+             True, m)
