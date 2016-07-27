@@ -71,7 +71,7 @@ class TreeCoverLoss(object):
 
         pivot.value = True
 
-        parameters = [in_features, tcd_threshold, mosaic_workspace, pivot, out_table]
+        parameters = [in_features, tcd_threshold, mosaic_workspace, out_table, pivot]
 
         return parameters
 

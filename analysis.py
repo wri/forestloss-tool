@@ -4,6 +4,15 @@ import arcpy
 import raster_function
 import util
 
+def check_extent(geometry, mosaics):
+
+    return
+
+def get_geometry(fc):
+    cursor = arcpy.da.SearchCursor(fc, ["Shape@"])
+    for row in cursor:
+        return row[0]
+
 def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     """
     Calulate zonal stats for a mask mosaic and a value mosaic using a vector feature as mask
@@ -17,6 +26,12 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     # Make lossyear mosaic spatial reference the default output coordinate system
     desc = arcpy.Describe(mask_mosaic)
     arcpy.env.outputCoordinateSystem = desc.spatialReference
+
+    mask_mosaic_layer = arcpy.MakeMosaicLayer_management(mask_mosaic, "mask_mosaic_layer")
+    value_mosaic_layer = arcpy.MakeMosaicLayer_management(value_mosaic, "value_mosaic_layer")
+
+    mask_mosaic_boundary = get_geometry("mask_mosaic_layer/Boundary")
+    value_mosaic_boundary = get_geometry("value_mosaic_layer/Boundary")
 
     # Snap to lossyear mosaic
     arcpy.env.snapRaster = mask_mosaic
@@ -47,26 +62,36 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
                 # Assign temporary feature class as mask in environment settings
                 # Must be feature class, Geometries are not accepted
                 if row[0] not in processed:
-                    mask_layer = "in_memory/mask"
-                    arcpy.CopyFeatures_management(row[1], mask_layer)
-                    arcpy.env.mask = mask_layer
-                    desc = arcpy.Describe(mask_layer)
-                    arcpy.env.extent = desc.extent
-                    # Somehow every second features does not get properly copies. Don't know why
-                    # If mask is empty feature get skipped and will be processed in the next loop
-                    if not math.isnan(arcpy.env.extent.XMin):
-                        # Sum area values for every year in mask lossyear layer
-                        # Save results in temporary table and add feature ID as extra column
-                        messages.AddMessage("Process feature {} out of {}".format(len(processed) + 1, row_count))
-                        temp_table = "in_memory/feature_{}".format(row[0])
-                        temp_tables.append(temp_table)
+                    # check if geometry of input feature is within bounds of mosaic datasets
+                    geometry = row[1].projectAs("WGS 1984")
+                    if geometry.within(mask_mosaic_boundary) and geometry.within(value_mosaic_boundary):
 
-                        arcpy.gp.ZonalStatisticsAsTable_sa(mask_mosaic, "VALUE", value_mosaic, temp_table, "DATA", "SUM")
+                        # Copy geometry to in memory feature class
+                        mask_layer = "in_memory/mask"
+                        arcpy.CopyFeatures_management(geometry, mask_layer)
+                        arcpy.env.mask = mask_layer
+                        desc = arcpy.Describe(mask_layer)
+                        arcpy.env.extent = desc.extent
 
-                        arcpy.AddField_management(temp_table, "FID", "LONG")
-                        arcpy.CalculateField_management (temp_table, "FID", row[0])
+                        # Somehow every second features does not get properly copies. Don't know why
+                        # If mask is empty feature get skipped and will be processed in the next loop
+                        if not math.isnan(arcpy.env.extent.XMin):
+                            # Sum area values for every year in mask lossyear layers
+                            # Save results in temporary table and add feature ID as extra column
+                            messages.AddMessage("Process feature {} out of {} (ID {})".format(len(processed) + 1,
+                                                                                              row_count, row[0]))
+                            temp_table = "in_memory/feature_{}".format(row[0])
+                            temp_tables.append(temp_table)
 
-                        # Make feature as processed
+                            arcpy.gp.ZonalStatisticsAsTable_sa(mask_mosaic, "VALUE", value_mosaic, temp_table, "DATA", "SUM")
+
+                            arcpy.AddField_management(temp_table, "FID", "LONG")
+                            arcpy.CalculateField_management (temp_table, "FID", row[0])
+
+                            # Make feature as processed
+                            processed.append(row[0])
+                    else:
+                        messages.AddMessage("Feature out of bounds - Skip (ID {})".format(row[0]))
                         processed.append(row[0])
 
         # Once all features are processed quite while loop
@@ -141,6 +166,7 @@ def clean_up(messages):
 
     return
 
+
 def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages):
     '''
     Calculate tree cover loss for input features
@@ -201,6 +227,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, mess
     if pivot:
         # Flatten table.
         # One line per feature, with seperate columns for each year
+        messages.AddMessage("Flatten table".format(out_table))
         arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "LOSS_M2", out_table)
 
     # Delete all in_memory datasets
@@ -274,6 +301,7 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot,
     if pivot:
         # Flatten table.
         # One line per feature, with seperate columns for each year
+        messages.AddMessage("Flatten table".format(out_table))
         arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "BIOMASS_LOSS_MG", out_table)
 
     # Delete all in_memory datasets
@@ -281,12 +309,13 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot,
 
     return
 
-arcpy.CheckOutExtension("Spatial")
-arcpy.env.overwriteOutput = True
-m = util.messages()
+if __name__ == "__main__":
+    arcpy.CheckOutExtension("Spatial")
+    arcpy.env.overwriteOutput = True
+    m = util.messages()
 
-biomass_loss(r"C:\Users\Thomas.Maschler\Documents\Atlas\CMR\atlas_forestier.mdb\unites_administratives\departements",
-             30,
-             r"C:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb",
-             "rC:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb\dep",
-             True, m)
+    biomass_loss(r"C:\Users\Thomas.Maschler\Documents\Atlas\CMR\atlas_forestier.mdb\unites_administratives\departements",
+                 30,
+                 r"C:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb",
+                 "rC:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb\dep",
+                 True, m)
