@@ -1,0 +1,58 @@
+<RasterFunctionTemplate xsi:type='typens:RasterFunctionTemplate' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:typens='http://www.esri.com/schemas/ArcGIS/10.4'>
+	<Name>Biomass conversion</Name>
+	<Description>A raster function template.</Description>
+	<Function xsi:type='typens:PythonAdapterFunction'>
+		<Name>Biomass conversion</Name>
+		<Description>This function converts biomass from  biomass/ha to biomass/px.</Description>
+		<PixelType>F32</PixelType>
+	</Function>
+	<Arguments xsi:type='typens:PythonAdapterFunctionArguments'>
+		<Names xsi:type='typens:ArrayOfString'>
+			<String>area</String>
+			<String>PythonModule</String>
+			<String>ClassName</String>
+			<String>biomass</String>
+		</Names>
+		<Values xsi:type='typens:ArrayOfAnyType'>
+			<AnyType xsi:type='typens:RasterFunctionVariable'>
+				<Name>Raster2</Name>
+				<Description/>
+				<Value xsi:type='typens:MosaicDatasetName'>
+					<WorkspaceName xsi:type='typens:WorkspaceName'>
+						<PathName>C:\Users\Thomas.Maschler\Desktop\gabon\test1.gdb</PathName>
+						<BrowseName>test1</BrowseName>
+						<WorkspaceFactoryProgID>esriDataSourcesGDB.FileGDBWorkspaceFactory.1</WorkspaceFactoryProgID>
+						<WorkspaceType>esriLocalDatabaseWorkspace</WorkspaceType>
+						<ConnectionProperties xsi:type='typens:PropertySet'>
+							<PropertyArray xsi:type='typens:ArrayOfPropertySetProperty'>
+								<PropertySetProperty xsi:type='typens:PropertySetProperty'>
+									<Key>DATABASE</Key>
+									<Value xsi:type='xs:string'>C:\Users\Thomas.Maschler\Desktop\gabon\test1.gdb</Value>
+								</PropertySetProperty>
+							</PropertyArray>
+						</ConnectionProperties>
+					</WorkspaceName>
+					<Name>area</Name>
+					<NameString/>
+					<Category>Mosaic Dataset</Category>
+				</Value>
+				<IsDataset>true</IsDataset>
+			</AnyType>
+			<AnyType xsi:type='xs:string'>..\BiomassConversion.py</AnyType>
+			<AnyType xsi:type='xs:string'>BiomassConversion</AnyType>
+			<AnyType xsi:type='typens:RasterFunctionVariable'>
+				<Name>Raster</Name>
+				<Description/>
+				<Value/>
+				<IsDataset>true</IsDataset>
+			</AnyType>
+		</Values>
+	</Arguments>
+	<Help/>
+	<Type>0</Type>
+	<Thumbnail xsi:type='xs:string'/>
+	<Definition/>
+	<Group/>
+	<Tag/>
+	<ThumbnailEx/>
+</RasterFunctionTemplate>

@@ -87,25 +87,44 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     else:
         raise Exception("No features found in input Layer")
 
-def mask_mosaic(mosaic, tcd_mosaic, tcd_threshold, messages):
-    '''
-    Mask loss year with TCD threshold
-    :param lossyear_mosaic:
-    :param tcd_mosaic:
-    :param tcd_threshold:
+def mask_lossyear(mosaic, tcd_mosaic, tcd_threshold, messages):
+    """
+    Apply TCD mask to lossyear mosaic
+    :param mosaic: string
+    :param tcd_mosaic: string
+    :param tcd_threshold: integer
+    :param messages: object
     :return:
-    '''
+    """
 
     messages.AddMessage("Load Raster functions")
 
     # Create raster function template file
-    remap_tcd = raster_function.update_tcd_mask(tcd_threshold)
-    mask = raster_function.mask_mosaic(tcd_mosaic)
+    mask_function = raster_function.mask_lossyear_mosaic(tcd_mosaic, tcd_threshold, messages)
 
     # Load raster functions
-    raster_function.replace_raster_function(tcd_mosaic, remap_tcd)
-    raster_function.replace_raster_function(mosaic, mask)
+    raster_function.replace_raster_function(mosaic, mask_function, messages)
 
+    return
+
+def convert_biomass(mosaic, area_mosaic, messages):
+    """
+    Apply biomass raster function to into biomass mosaic
+    :param mosaic: string
+    :param area_mosaic: string
+    :param messages: object
+    :return:
+    """
+
+    messages.AddMessage("Load Raster functions")
+
+    # Create raster function template file
+    raster_function = raster_function.convert_biomass_mosaic(area_mosaic, messages)
+
+    # Load raster functions
+    raster_function.replace_raster_function(mosaic, raster_function, messages)
+
+    return
 
 def clean_up(messages):
     """
@@ -121,6 +140,7 @@ def clean_up(messages):
     for dataset in datasets:
         arcpy.Delete_management(dataset)
 
+    return
 
 def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
     '''
@@ -139,7 +159,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
     tcd_mosaic = os.path.join(mosaic_workspace, "tcd")
 
     # Mask loss year using the TCD threshold
-    mask_mosaic(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
+    mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
 
     # Calculating annual loss for every input feature
     zonal_stats_table = zonal_stats(lossyear_mosaic, area_mosaic, in_features, messages)
@@ -152,7 +172,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
     arcpy.AddField_management(out_table, "LOSS_M2", "DOUBLE")
 
     # Select relevant fields from merged table
-    cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"])
+    cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"], sql_clause=(None, "ORDER BY FID DESC"))
 
     # Create Insert cursor for output table
     newrows = arcpy.InsertCursor(out_table)
@@ -161,7 +181,9 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messages):
     for row in cursor:
         newrow = newrows.newRow()
         newrow.setValue("FID", row[0])
-        if row[1] == 0:
+        if row[1] == -1:
+            newrow.setValue("YEAR", "area outside threshold")
+        elif row[1] == 0:
             newrow.setValue("YEAR", "no loss")
         else:
             newrow.setValue("YEAR", 2000 + row[1])
@@ -188,12 +210,13 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
     lossyear_mosaic = os.path.join(mosaic_workspace, "lossyear")
     biomass_mosaic = os.path.join(mosaic_workspace, "biomass")
     tcd_mosaic = os.path.join(mosaic_workspace, "tcd")
+    area_mosaic = os.path.join(mosaic_workspace, "area")
 
-    # Mask loss year using the TCD threshold
-    mask_mosaic(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
+    # Mask loss year using the TCD threshold. set all values outside threshold to -1
+    mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
 
-     # Mask biomass using the TCD threshold
-    mask_mosaic(biomass_mosaic, tcd_mosaic, tcd_threshold, messages)
+     # Convert biomass per hectare to biomass per pixel
+    convert_biomass(biomass_mosaic, area_mosaic, messages)
 
     # Calculating annual loss for every input feature
     zonal_stats_table = zonal_stats(lossyear_mosaic, biomass_mosaic, in_features, messages)
@@ -207,7 +230,7 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
     arcpy.AddField_management(out_table, "EMISSIONS_MT_CO2", "DOUBLE")
 
     # Select relevant fields from merged table
-    cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"])
+    cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"], sql_clause=(None, "ORDER BY FID DESC"))
 
     # Create Insert cursor for output table
     newrows = arcpy.InsertCursor(out_table)
@@ -216,15 +239,18 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, messag
     for row in cursor:
         newrow = newrows.newRow()
         newrow.setValue("FID", row[0])
-        if row[1] == 0:
-            newrow.setValue("YEAR", "remaining biomass")
+        if row[1] == -1:
+            newrow.setValue("YEAR", "biomass outside threshold")
+        elif row[1] == 0:
+            newrow.setValue("YEAR", "no biomass loss")
         else:
             newrow.setValue("YEAR", 2000 + row[1])
         newrow.setValue("TCD", tcd_threshold)
         newrow.setValue("BIOMASS_LOSS_MG", row[2])
-        # TODO: Check actual carbon emissions formula
         newrow.setValue("EMISSIONS_MT_CO2", row[2]*.5*3.67/1000000)
         newrows.insertRow(newrow)
 
     # Delete all in_memory datasets
     clean_up(messages)
+
+

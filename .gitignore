@@ -1,6 +1,6 @@
 *.pyt.xml
-templates/mask_mosaic.rft.xml
-templates/tcd_mask.rft.xml
+templates/lossyear_mask.rft.xml
+templates/biomass_conversion.rft.xml
 
 
 # Byte-compiled / optimized / DLL files

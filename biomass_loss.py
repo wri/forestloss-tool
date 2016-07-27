@@ -91,15 +91,20 @@ class BioMassLoss(object):
         :return:
         '''
 
-        if parameters[2].valueAsText:
+        if parameters[2].altered and parameters[2].valueAsText:
             mosaic_workspace = parameters[2].valueAsText
-            if not util.is_file_gdb(mosaic_workspace):
-                parameters[2].setErrorMessage("Workspace must be a geodatabase")
+            if arcpy.Exists(mosaic_workspace):
+                if not util.is_file_gdb(mosaic_workspace):
+                    parameters[2].setErrorMessage("Workspace must be a geodatabase")
+                    return
+            else:
+                parameters[2].setErrorMessage("Workspace does not exist")
                 return
 
             if not util.mosaic_datasets_exist([os.path.join(mosaic_workspace, "lossyear"),
-                                               os.path.join(mosaic_workspace,"tcd"),
-                                               os.path.join(mosaic_workspace,"biomass")]):
+                                               os.path.join(mosaic_workspace, "tcd"),
+                                               os.path.join(mosaic_workspace, "biomass"),
+                                               os.path.join(mosaic_workspace, "area")]):
                 parameters[2].setErrorMessage("Geodatabase must contain loss, biomass and tcd mosaic datasets")
 
         return
