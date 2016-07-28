@@ -60,37 +60,43 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
                 # Assign temporary feature class as mask in environment settings
                 # Must be feature class, Geometries are not accepted
                 if row[0] not in processed:
-                    # check if geometry of input feature is within bounds of mosaic datasets
-                    geometry = row[1].projectAs("WGS 1984")
-                    if geometry.within(mask_mosaic_boundary) and geometry.within(value_mosaic_boundary):
+                    # Check if geometry actually exists
+                    if row[1]:
+                        # check if geometry of input feature is within bounds of mosaic datasets
+                        geometry = row[1].projectAs("WGS 1984")
+                        if geometry.within(mask_mosaic_boundary) and geometry.within(value_mosaic_boundary):
 
-                        # Copy geometry to in memory feature class
-                        mask_layer = "in_memory/mask"
-                        arcpy.CopyFeatures_management(geometry, mask_layer)
-                        arcpy.env.mask = mask_layer
-                        desc = arcpy.Describe(mask_layer)
-                        arcpy.env.extent = desc.extent
+                            # Copy geometry to in memory feature class
+                            mask_layer = "in_memory/mask"
+                            arcpy.CopyFeatures_management(geometry, mask_layer)
+                            arcpy.env.mask = mask_layer
+                            desc = arcpy.Describe(mask_layer)
+                            arcpy.env.extent = desc.extent
 
-                        # Somehow every second features does not get properly copies. Don't know why
-                        # If mask is empty feature get skipped and will be processed in the next loop
-                        if not math.isnan(arcpy.env.extent.XMin):
-                            # Sum area values for every year in mask lossyear layers
-                            # Save results in temporary table and add feature ID as extra column
-                            messages.AddMessage("Process feature {} out of {} (ID {})".format(len(processed) + 1,
-                                                                                              row_count, row[0]))
-                            temp_table = "in_memory/feature_{}".format(row[0])
-                            temp_tables.append(temp_table)
+                            # Somehow every second features does not get properly copies. Don't know why
+                            # If mask is empty feature get skipped and will be processed in the next loop
+                            if not math.isnan(arcpy.env.extent.XMin):
+                                # Sum area values for every year in mask lossyear layers
+                                # Save results in temporary table and add feature ID as extra column
+                                messages.AddMessage("Process feature {} out of {} (ID {})".format(len(processed) + 1,
+                                                                                                  row_count, row[0]))
+                                temp_table = "in_memory/feature_{}".format(row[0])
+                                temp_tables.append(temp_table)
 
-                            arcpy.gp.ZonalStatisticsAsTable_sa(mask_mosaic, "VALUE", value_mosaic, temp_table, "DATA", "SUM")
+                                arcpy.gp.ZonalStatisticsAsTable_sa(mask_mosaic, "VALUE", value_mosaic, temp_table, "DATA", "SUM")
 
-                            arcpy.AddField_management(temp_table, "FID", "LONG")
-                            arcpy.CalculateField_management (temp_table, "FID", row[0])
+                                arcpy.AddField_management(temp_table, "FID", "LONG")
+                                arcpy.CalculateField_management (temp_table, "FID", row[0])
 
-                            # Make feature as processed
+                                # Make feature as processed
+                                processed.append(row[0])
+                        else:
+                            messages.AddMessage("Feature out of bounds - Skip (ID {})".format(row[0]))
                             processed.append(row[0])
                     else:
-                        messages.AddMessage("Feature out of bounds - Skip (ID {})".format(row[0]))
+                        messages.AddMessage("Feature has no valid geometry - Skip (ID {})".format(row[0]))
                         processed.append(row[0])
+
 
         # Once all features are processed quite while loop
         if id == sorted(processed):
