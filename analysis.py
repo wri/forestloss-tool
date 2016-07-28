@@ -4,14 +4,12 @@ import arcpy
 import raster_function
 import util
 
-def check_extent(geometry, mosaics):
-
-    return
 
 def get_geometry(fc):
     cursor = arcpy.da.SearchCursor(fc, ["Shape@"])
     for row in cursor:
         return row[0]
+
 
 def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     """
@@ -111,6 +109,7 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
     else:
         raise Exception("No features found in input Layer")
 
+
 def mask_lossyear(mosaic, tcd_mosaic, tcd_threshold, messages):
     """
     Apply TCD mask to lossyear mosaic
@@ -131,6 +130,7 @@ def mask_lossyear(mosaic, tcd_mosaic, tcd_threshold, messages):
 
     return
 
+
 def convert_biomass(mosaic, area_mosaic, messages):
     """
     Apply biomass raster function to biomass mosaic
@@ -150,20 +150,26 @@ def convert_biomass(mosaic, area_mosaic, messages):
 
     return
 
-def clean_up(messages):
+def clean_up(mosaics, messages):
     """
-    Delete all in_memort datasets
+    Delete all in_memort datasets and remove raster functions from listed mosaics
+    :param mosaics: list
     :return:
     """
 
     messages.AddMessage("Clean up")
 
+    # get all datasets in "in_memory" workspace
     arcpy.env.workspace = "in_memory"
     datasets = arcpy.ListDatasets()
 
+    # remove all datasets in in_memory workspace
     for dataset in datasets:
         arcpy.Delete_management(dataset)
 
+    # remove all datasets from listed mosaics
+    for mosaic in mosaics:
+        arcpy.EditRasterFunction_management(mosaic, "EDIT_MOSAIC_DATASET", "REMOVE")
     return
 
 
@@ -231,7 +237,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, mess
         arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "LOSS_M2", out_table)
 
     # Delete all in_memory datasets
-    clean_up(messages)
+    clean_up([lossyear_mosaic], messages)
 
     return
 
@@ -254,11 +260,16 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot,
     tcd_mosaic = os.path.join(mosaic_workspace, "tcd")
     area_mosaic = os.path.join(mosaic_workspace, "area")
 
+    # TODO: Add biomass conversion function here
+    # Somehow I cannot remove existing raster functions from the biomass layer. Not sure why!? It works for the lossyear
+    # As a result would add the biomass function multiple times which cases wrong results.
+    # As a work around I add the biomass conversion function directly on mosaic creation and won't touch it anymore. FOREVER.
+
+    # Convert biomass per hectare to biomass per pixel
+    # convert_biomass(biomass_mosaic, area_mosaic, messages)
+
     # Mask loss year using the TCD threshold. set all values outside threshold to -1
     mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
-
-     # Convert biomass per hectare to biomass per pixel
-    convert_biomass(biomass_mosaic, area_mosaic, messages)
 
     # Calculating annual loss for every input feature
     zonal_stats_table = zonal_stats(lossyear_mosaic, biomass_mosaic, in_features, messages)
@@ -305,7 +316,15 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot,
         arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "BIOMASS_LOSS_MG", out_table)
 
     # Delete all in_memory datasets
-    clean_up(messages)
+    # Remove all raster functions
+
+    # TODO: Remove raster function from biomass layer
+    # I wasn't able to remove the biomass raster functions using this approach. Not sure why?! It works for the lossyear.
+    # Since biomass conversion doesn't require any additional user input or can't be altered in the tool
+    # I add it directly during the creation of the mosaic dataset and keep it there.
+    # This has the disadvantage that it always shows up. If the user replaces it or results form this tool will be wrong.
+
+    clean_up([lossyear_mosaic], messages)
 
     return
 

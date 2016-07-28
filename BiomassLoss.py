@@ -1,8 +1,7 @@
 import os
 import arcpy
-import analysis
 import util
-
+import analysis
 
 class BiomassLoss(object):
     '''

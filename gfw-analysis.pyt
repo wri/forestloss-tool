@@ -1,4 +1,4 @@
-from configuregdb import ConfigureGDB
+from ConfigureGDB import ConfigureGDB
 from TreeCoverLoss import TreeCoverLoss
 from BiomassLoss import BiomassLoss
 

@@ -1,7 +1,7 @@
 import os
 import arcpy
 import util
-
+import analysis
 
 class ConfigureGDB(object):
     '''
@@ -110,8 +110,19 @@ class ConfigureGDB(object):
                 parameters[3].setErrorMessage("Selected GDB already has a area mosaic dataset")
             if parameters[4].values and arcpy.Exists(os.path.join(mosaic_workspace, "tcd")):
                 parameters[4].setErrorMessage("Selected GDB already has a tcd mosaic dataset")
-            if parameters[5].values and arcpy.Exists(os.path.join(mosaic_workspace, "biomass")):
-                parameters[5].setErrorMessage("Selected GDB already has a biomass mosaic dataset")
+
+            # TODO: Move adding biomass conversion function to analysis script
+            # Somehow I cannot remove existing raster functions from the biomass layer. Not sure why!? It works for the lossyear
+            # As a result the tool would add the biomass function multiple times which cases wrong results.
+            # As a work around I add the biomass conversion function directly on mosaic creation and won't touch it anymore. FOREVER.
+            if parameters[5].values:
+                if not parameters[3].values:
+                    if not arcpy.Exists(os.path.join(mosaic_workspace, "area")):
+                        parameters[5].setErrorMessage("Biomass mosaic depends on area mosaic. Please add area mosaic to GDB as well.")
+                else:
+                    parameters[5].clearMessage()
+                if arcpy.Exists(os.path.join(mosaic_workspace, "biomass")):
+                    parameters[5].setErrorMessage("Selected GDB already has a biomass mosaic dataset")
 
         return
 
@@ -141,6 +152,12 @@ class ConfigureGDB(object):
         if parameters[5].values:
             biomass_rasters = [v.value for v in parameters[5].values]
             util.create_mosaic_dataset(mosaic_workspace, "biomass", biomass_rasters, "32_BIT_FLOAT", messages)
+
+            # TODO: Move adding biomass conversion function to analysis script
+            # Somehow I cannot remove existing raster functions from the biomass layer. Not sure why!? It works for the lossyear
+            # As a result the tool would add the biomass function multiple times which cases wrong results.
+            # As a work around I add the biomass conversion function directly on mosaic creation and won't touch it anymore. FOREVER.
+            analysis.convert_biomass(os.path.join(mosaic_workspace, "biomass"), os.path.join(mosaic_workspace, "area"), messages)
 
 
 
