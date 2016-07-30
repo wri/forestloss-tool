@@ -66,11 +66,24 @@ class BiomassLoss(object):
             name="pivot",
             datatype="GPBoolean",
             parameterType="Required",
-            direction="Output")
-
+            direction="Input")
         pivot.value = True
 
-        parameters = [in_features, tcd_threshold, mosaic_workspace, out_table, pivot]
+        # Make output table a pivot table
+        unit = arcpy.Parameter(
+            displayName="Output unit",
+            name="unit",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input")
+
+        unit.filter.type = "ValueList"
+        unit.filter.list = ["Mg biomass", "MT CO2"]
+        unit.value = "Mg biomass"
+        unit.enabled = True
+
+
+        parameters = [in_features, tcd_threshold, mosaic_workspace, out_table, pivot, unit]
 
         return parameters
 
@@ -89,8 +102,13 @@ class BiomassLoss(object):
 
         return True  # tool can be executed
 
-    def updateParameters(self, parameters): #optional
-       return
+    def updateParameters(self, parameters):
+        if bool(parameters[4].value):
+            parameters[5].enabled = True
+        else:
+            parameters[5].enabled = False
+
+        return
 
     def updateMessages(self, parameters):
         '''
@@ -100,7 +118,7 @@ class BiomassLoss(object):
         :return:
         '''
 
-        if parameters[2].altered and parameters[2].valueAsText:
+        if parameters[2].altered and parameters[2].valueAsText and not parameters[2].hasBeenValidated:
             mosaic_workspace = parameters[2].valueAsText
             if arcpy.Exists(mosaic_workspace):
                 if not util.is_file_gdb(mosaic_workspace):
@@ -136,6 +154,7 @@ class BiomassLoss(object):
         tcd_threshold = int(parameters[1].valueAsText)
         mosaic_workspace = parameters[2].valueAsText
         out_table = parameters[3].valueAsText
-        pivot = bool(parameters[4].valueAsText)
+        pivot = bool(parameters[4].value)
+        unit = parameters[5].valueAsText
 
-        analysis.biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages)
+        analysis.biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, unit, messages)

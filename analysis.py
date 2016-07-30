@@ -248,7 +248,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, mess
     return
 
 
-def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages):
+def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, unit, messages):
     '''
     Calculate biomass loss for input features
     :param in_features: string
@@ -256,6 +256,7 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot,
     :param mosaic_workspace: string
     :param out_table: string
     :param pivot: boolean
+    :param unit: string
     :param messages: object
     :return:
     '''
@@ -319,7 +320,11 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot,
         # Flatten table.
         # One line per feature, with seperate columns for each year
         messages.AddMessage("Flatten table".format(out_table))
-        arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "BIOMASS_LOSS_MG", out_table)
+        if unit == "Mg biomass":
+            value_column = "BIOMASS_LOSS_MG"
+        else:
+            value_column = "EMISSIONS_MT_CO2"
+        arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", value_column, out_table)
 
     # Delete all in_memory datasets
     # Remove all raster functions

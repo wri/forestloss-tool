@@ -101,7 +101,7 @@ class TreeCoverLoss(object):
         :return:
         '''
 
-        if parameters[2].altered and parameters[2].valueAsText:
+        if parameters[2].altered and parameters[2].valueAsText and not parameters[2].hasBeenValidated:
             mosaic_workspace = parameters[2].valueAsText
             if arcpy.Exists(mosaic_workspace):
                 if not util.is_file_gdb(mosaic_workspace):
@@ -135,6 +135,6 @@ class TreeCoverLoss(object):
         tcd_threshold = int(parameters[1].valueAsText)
         mosaic_workspace = parameters[2].valueAsText
         out_table = parameters[3].valueAsText
-        pivot = bool(parameters[4].valueAsText)
+        pivot = bool(parameters[4].value)
 
         analysis.tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages)

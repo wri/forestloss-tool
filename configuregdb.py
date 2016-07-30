@@ -102,27 +102,32 @@ class ConfigureGDB(object):
         '''
         if parameters[0].altered:
             mosaic_workspace = parameters[0].valueAsText
-            if parameters[1].values and arcpy.Exists(os.path.join(mosaic_workspace, "lossyear")):
-                parameters[1].setErrorMessage("Selected GDB already has a lossyear mosaic dataset")
-            if parameters[2].values and arcpy.Exists(os.path.join(mosaic_workspace, "gain")):
-                parameters[2].setErrorMessage("Selected GDB already has a gain mosaic dataset")
-            if parameters[3].values and arcpy.Exists(os.path.join(mosaic_workspace, "area")):
-                parameters[3].setErrorMessage("Selected GDB already has a area mosaic dataset")
-            if parameters[4].values and arcpy.Exists(os.path.join(mosaic_workspace, "tcd")):
-                parameters[4].setErrorMessage("Selected GDB already has a tcd mosaic dataset")
+            if not parameters[1].hasBeenValidated:
+                if parameters[1].values and arcpy.Exists(os.path.join(mosaic_workspace, "lossyear")):
+                    parameters[1].setErrorMessage("Selected GDB already has a lossyear mosaic dataset")
+            if not parameters[2].hasBeenValidated:
+                if parameters[2].values and arcpy.Exists(os.path.join(mosaic_workspace, "gain")):
+                    parameters[2].setErrorMessage("Selected GDB already has a gain mosaic dataset")
+            if not parameters[3].hasBeenValidated:
+                if parameters[3].values and arcpy.Exists(os.path.join(mosaic_workspace, "area")):
+                    parameters[3].setErrorMessage("Selected GDB already has a area mosaic dataset")
+            if not parameters[4].hasBeenValidated:
+                if parameters[4].values and arcpy.Exists(os.path.join(mosaic_workspace, "tcd")):
+                    parameters[4].setErrorMessage("Selected GDB already has a tcd mosaic dataset")
 
             # TODO: Move adding biomass conversion function to analysis script
             # Somehow I cannot remove existing raster functions from the biomass layer. Not sure why!? It works for the lossyear
             # As a result the tool would add the biomass function multiple times which cases wrong results.
             # As a work around I add the biomass conversion function directly on mosaic creation and won't touch it anymore. FOREVER.
-            if parameters[5].values:
-                if not parameters[3].values:
-                    if not arcpy.Exists(os.path.join(mosaic_workspace, "area")):
-                        parameters[5].setErrorMessage("Biomass mosaic depends on area mosaic. Please add area mosaic to GDB as well.")
-                else:
-                    parameters[5].clearMessage()
-                if arcpy.Exists(os.path.join(mosaic_workspace, "biomass")):
-                    parameters[5].setErrorMessage("Selected GDB already has a biomass mosaic dataset")
+            if not parameters[5].hasBeenValidated:
+                if parameters[5].values:
+                    if not parameters[3].values:
+                        if not arcpy.Exists(os.path.join(mosaic_workspace, "area")):
+                            parameters[5].setErrorMessage("Biomass mosaic depends on area mosaic. Please add area mosaic to GDB as well.")
+                    else:
+                        parameters[5].clearMessage()
+                    if arcpy.Exists(os.path.join(mosaic_workspace, "biomass")):
+                        parameters[5].setErrorMessage("Selected GDB already has a biomass mosaic dataset")
 
         return
 
