@@ -233,14 +233,14 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, mess
         else:
             newrow.setValue("YEAR", "Year {}".format(2000 + row[1]))
         newrow.setValue("TCD", tcd_threshold)
-        newrow.setValue("LOSS_M2", row[2])
+        newrow.setValue("LOSS_HA", row[2]/10000)
         newrows.insertRow(newrow)
 
     if pivot:
         # Flatten table.
         # One line per feature, with seperate columns for each year
         messages.AddMessage("Flatten table".format(out_table))
-        arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "LOSS_M2", out_table)
+        arcpy.PivotTable_management(format_table, "FID;TCD", "YEAR", "LOSS_HA", out_table)
 
     # Delete all in_memory datasets
     clean_up([lossyear_mosaic], messages)
