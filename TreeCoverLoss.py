@@ -33,7 +33,7 @@ class TreeCoverLoss(object):
 
         # Tree cover density threshold. Input value must be an integer between 10 and 100
         tcd_threshold = arcpy.Parameter(
-            displayName="Tree cover density (10 - 100)",
+            displayName="Tree cover density threshold (exclude values <=)",
             name="tcd_threshold",
             datatype="GPLong",
             parameterType="Required",

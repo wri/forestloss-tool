@@ -88,7 +88,7 @@ class ConfigureGDB(object):
 
     def updateParameters(self, parameters):
         '''
-        No update parameters
+        No need to update parameters
         :param parameters:
         :return:
         '''
