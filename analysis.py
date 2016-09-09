@@ -214,7 +214,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, mess
     arcpy.AddField_management(format_table, "FID", "LONG")
     arcpy.AddField_management(format_table, "YEAR", "TEXT")
     arcpy.AddField_management(format_table, "TCD", "LONG")
-    arcpy.AddField_management(format_table, "LOSS_M2", "DOUBLE")
+    arcpy.AddField_management(format_table, "LOSS_HA", "DOUBLE")
 
     # Select relevant fields from merged table
     cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"], sql_clause=(None, "ORDER BY FID DESC"))
