@@ -71,7 +71,30 @@ class TreeCoverLoss(object):
 
         pivot.value = True
 
-        parameters = [in_features, tcd_threshold, mosaic_workspace, out_table, pivot]
+
+        # Location of temporary merge table
+        temp_merge = arcpy.Parameter(
+            displayName="Temporay output table",
+            name="temp_merge",
+            datatype="DETable",
+            parameterType="Required",
+            direction="Output",
+            category="Advanced")
+
+        temp_merge.value = "in_memory/merge_table"
+
+        # Maximum number of temporary features
+        max_temp = arcpy.Parameter(
+            displayName="Maximum number of temporary features",
+            name="max_temp",
+            datatype="GPLong",
+            parameterType="Required",
+            direction="Input",
+            category="Advanced")
+
+        max_temp.value = "100"
+
+        parameters = [in_features, tcd_threshold, mosaic_workspace, out_table, pivot, temp_merge, max_temp]
 
         return parameters
 
@@ -136,5 +159,7 @@ class TreeCoverLoss(object):
         mosaic_workspace = parameters[2].valueAsText
         out_table = parameters[3].valueAsText
         pivot = bool(parameters[4].value)
+        temp_merge = parameters[5].valueAsText
+        max_temp = int(parameters[6].valueAsText)
 
-        analysis.tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages)
+        analysis.tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, max_temp, max_temp, messages)

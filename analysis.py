@@ -11,13 +11,30 @@ def get_geometry(fc):
         return row[0]
 
 
-def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
+def merge_results(temp_tables, temp_merge, messages):
+    if len(temp_tables) > 0:
+        # Merge all results into one tab;e
+        messages.AddMessage("Merge results")
+        if not arcpy.Exists(temp_merge):
+            arcpy.CreateTable_management(os.path.dirname(temp_merge), os.path.basename(temp_merge), temp_tables[0])
+        arcpy.Append_management(temp_tables, temp_merge)
+        for temp_table in temp_tables:
+            arcpy.Delete_management(temp_table)
+        return temp_merge
+
+    else:
+        raise Exception("No features found in input Layer")
+
+
+def zonal_stats(mask_mosaic, value_mosaic, in_features, temp_merge, max_temp, messages):
     """
     Calulate zonal stats for a mask mosaic and a value mosaic using a vector feature as mask
-    :param mask_mosaic:
-    :param value_mosaic:
-    :param in_features:
-    :param messages:
+    :param mask_mosaic: string
+    :param value_mosaic: string
+    :param in_features: string
+    :param temp_merge: string
+    :param max_temp: long
+    :param messages: object
     :return:
     """
 
@@ -39,6 +56,10 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
 
     # Create list to register temp output tables
     temp_tables = list()
+
+    # Check if temporary output table exist. If yes, delete to make sure that new table with correct schema will be created
+    if arcpy.Exists(temp_merge):
+        arcpy.Delete_management(temp_merge)
 
     # Create lists to count if all features were processed
     processed = list()
@@ -97,21 +118,22 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, messages):
                         messages.AddMessage("Feature has no valid geometry - Skip (ID {})".format(row[0]))
                         processed.append(row[0])
 
+        # once given threshold is reached, write all temporary results into one single table to prevent script from crashing
+        # might be internal memory related issue? Normally, max number of feature classes is 2Bil
+
+        if len(processed) == max_temp:
+            merge_results(temp_tables, temp_merge, messages)
+            temp_tables = list()
 
         # Once all features are processed quite while loop
         if id == sorted(processed):
             done = True
 
     if len(temp_tables) > 0:
-        # Merge all results into one tab;e
-        messages.AddMessage("Merge results")
-        temp_merge = "in_memory/merge_table"
+        merge_results(temp_tables, temp_merge, messages)
 
-        arcpy.CreateTable_management(os.path.dirname(temp_merge), os.path.basename(temp_merge), temp_table)
-        arcpy.Append_management(temp_tables, temp_merge)
-
+    if arcpy.Exists(temp_merge):
         return temp_merge
-
     else:
         raise Exception("No features found in input Layer")
 
@@ -156,6 +178,7 @@ def convert_biomass(mosaic, area_mosaic, messages):
 
     return
 
+
 def clean_up(mosaics, messages):
     """
     Delete all in_memort datasets and remove raster functions from listed mosaics
@@ -179,7 +202,7 @@ def clean_up(mosaics, messages):
     return
 
 
-def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, messages):
+def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, merge_table, max_temp, messages):
     '''
     Calculate tree cover loss for input features
     :param in_features: string
@@ -187,6 +210,8 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, mess
     :param mosaic_workspace: string
     :param out_table: string
     :param pivot: boolean
+    :param merge_table: string
+    :param max_temp: integer
     :param messages: object
     :return:
     '''
@@ -200,7 +225,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, mess
     mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
 
     # Calculating annual loss for every input feature
-    zonal_stats_table = zonal_stats(lossyear_mosaic, area_mosaic, in_features, messages)
+    zonal_stats_table = zonal_stats(lossyear_mosaic, area_mosaic, in_features, merge_table, max_temp, messages)
 
     # If final output is a pivot table write format table into a temp file,
     # IF not create directly output table
@@ -248,7 +273,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, mess
     return
 
 
-def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, unit, messages):
+def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, unit, merge_table, max_temp, messages):
     '''
     Calculate biomass loss for input features
     :param in_features: string
@@ -257,6 +282,8 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot,
     :param out_table: string
     :param pivot: boolean
     :param unit: string
+    :param merge_table: string
+    :param max_temp: integer
     :param messages: object
     :return:
     '''
@@ -279,7 +306,7 @@ def biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot,
     mask_lossyear(lossyear_mosaic, tcd_mosaic, tcd_threshold, messages)
 
     # Calculating annual loss for every input feature
-    zonal_stats_table = zonal_stats(lossyear_mosaic, biomass_mosaic, in_features, messages)
+    zonal_stats_table = zonal_stats(lossyear_mosaic, biomass_mosaic, in_features, merge_table, max_temp, messages)
 
     # If final output is a pivot table write format table into a temp file,
     # IF not create directly output table
