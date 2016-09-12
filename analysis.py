@@ -6,27 +6,39 @@ import util
 
 
 def get_geometry(fc):
+    """
+    return first geometry of feature class
+    :param fc: string
+    :return: arcpy.geometry
+    """
     cursor = arcpy.da.SearchCursor(fc, ["Shape@"])
     for row in cursor:
         return row[0]
 
 
-def merge_results(temp_tables, temp_merge, messages):
+def merge_results(temp_tables, merge_table, messages):
+    """
+    Append input temp_tables into merge table
+    :param temp_tables: list
+    :param merge_table: string
+    :param messages: object
+    :return: string
+    """
     if len(temp_tables) > 0:
-        # Merge all results into one tab;e
+        # Merge all results into one table
         messages.AddMessage("Merge results")
-        if not arcpy.Exists(temp_merge):
-            arcpy.CreateTable_management(os.path.dirname(temp_merge), os.path.basename(temp_merge), temp_tables[0])
-        arcpy.Append_management(temp_tables, temp_merge)
+        if not arcpy.Exists(merge_table):
+            arcpy.CreateTable_management(os.path.dirname(merge_table), os.path.basename(merge_table), temp_tables[0])
+        arcpy.Append_management(temp_tables, merge_table)
         for temp_table in temp_tables:
             arcpy.Delete_management(temp_table)
-        return temp_merge
+        return merge_table
 
     else:
         raise Exception("No features found in input Layer")
 
 
-def zonal_stats(mask_mosaic, value_mosaic, in_features, temp_merge, max_temp, messages):
+def zonal_stats(mask_mosaic, value_mosaic, in_features, merge_table, max_temp, messages):
     """
     Calulate zonal stats for a mask mosaic and a value mosaic using a vector feature as mask
     :param mask_mosaic: string
@@ -58,11 +70,14 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, temp_merge, max_temp, me
     temp_tables = list()
 
     # Check if temporary output table exist. If yes, delete to make sure that new table with correct schema will be created
-    if arcpy.Exists(temp_merge):
-        arcpy.Delete_management(temp_merge)
+    if arcpy.Exists(merge_table):
+        arcpy.Delete_management(merge_table)
 
     # Create lists to count if all features were processed
     processed = list()
+
+    #Create counter for merged features
+    merged = 0
 
     # Count number of rows in input layer
     row_count = int(arcpy.GetCount_management(in_layer).getOutput(0))
@@ -118,22 +133,24 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, temp_merge, max_temp, me
                         messages.AddMessage("Feature has no valid geometry - Skip (ID {})".format(row[0]))
                         processed.append(row[0])
 
-        # once given threshold is reached, write all temporary results into one single table to prevent script from crashing
-        # might be internal memory related issue? Normally, max number of feature classes is 2Bil
+                    # once given threshold is reached, write all temporary results into one single table to prevent script from crashing
+                    # might be internal memory related issue? Normally, max number of feature classes is 2Bil
 
-        if len(processed) == max_temp:
-            merge_results(temp_tables, temp_merge, messages)
-            temp_tables = list()
+                    if len(processed) == max_temp+merged and len(temp_tables) > 0:
+                        #messages.AddMessage("max_temp: {}, len(processed): {}, merged:{}".format(max_temp, len(processed), merged))
+                        merge_results(temp_tables, merge_table, messages)
+                        temp_tables = list()
+                        merged += max_temp
 
         # Once all features are processed quite while loop
         if id == sorted(processed):
             done = True
 
     if len(temp_tables) > 0:
-        merge_results(temp_tables, temp_merge, messages)
+        merge_results(temp_tables, merge_table, messages)
 
-    if arcpy.Exists(temp_merge):
-        return temp_merge
+    if arcpy.Exists(merge_table):
+        return merge_table
     else:
         raise Exception("No features found in input Layer")
 

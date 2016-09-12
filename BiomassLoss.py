@@ -88,11 +88,11 @@ class BiomassLoss(object):
             displayName="Temporay output table",
             name="temp_merge",
             datatype="DETable",
-            parameterType="Required",
+            parameterType="Optional",
             direction="Output",
             category="Advanced")
 
-        temp_merge.value = "in_memory/merge_table"
+        #temp_merge.value = "in_memory/merge_table"
 
         # Maximum number of temporary features
         max_temp = arcpy.Parameter(
@@ -179,7 +179,10 @@ class BiomassLoss(object):
         out_table = parameters[3].valueAsText
         pivot = bool(parameters[4].value)
         unit = parameters[5].valueAsText
-        temp_merge = parameters[6].valueAsText
+        if not parameters[6].valueAsText:
+            merge_table = "in_memory/merge_table"
+        else:
+            merge_table = parameters[6].valueAsText
         max_temp = int(parameters[7].valueAsText)
 
-        analysis.biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, unit, temp_merge, max_temp, messages)
+        analysis.biomass_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, unit, merge_table, max_temp, messages)
