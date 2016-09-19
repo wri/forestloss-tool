@@ -6,13 +6,13 @@ import analysis
 import util
 
 
-class TreeCoverLoss(object):
+class TreeCoverLossMean(object):
     '''
     Tree cover loss tool
     '''
 
     def __init__(self):
-        self.label       = "Tree Cover Loss"
+        self.label       = "Tree Cover Loss Mean"
         self.description = "Calculate tree cover loss for a given feature class " + \
                            "Define custom threshold for tree cover density"
         self.canRunInBackground = False

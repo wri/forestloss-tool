@@ -89,7 +89,7 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, merge_table, max_temp, m
         # Create list to count all features
         id = list()
 
-        with arcpy.da.SearchCursor(in_layer, ['OID@', 'Shape@']) as cursor:
+        with arcpy.da.SearchCursor(in_layer, ['OID@', 'Shape@', "mean_area"]) as cursor:
             for row in cursor:
                 id.append(row[0])
                 # If feature was not yet processed copy feature to temporary feature class
@@ -123,6 +123,9 @@ def zonal_stats(mask_mosaic, value_mosaic, in_features, merge_table, max_temp, m
 
                                 arcpy.AddField_management(temp_table, "FID", "LONG")
                                 arcpy.CalculateField_management (temp_table, "FID", row[0])
+
+                                arcpy.AddField_management(temp_table, "mean_area", "DOUBLE")
+                                arcpy.CalculateField_management (temp_table, "mean_area", row[2])
 
                                 # Make feature as processed
                                 processed.append(row[0])
@@ -259,7 +262,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, merg
     arcpy.AddField_management(format_table, "LOSS_HA", "DOUBLE")
 
     # Select relevant fields from merged table
-    cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "SUM"], sql_clause=(None, "ORDER BY FID DESC"))
+    cursor = arcpy.da.SearchCursor(zonal_stats_table, ["FID", "VALUE", "COUNT", "mean_area"], sql_clause=(None, "ORDER BY FID DESC"))
 
     # Create Insert cursor for output table
     newrows = arcpy.InsertCursor(format_table)
@@ -275,7 +278,7 @@ def tc_loss(in_features, tcd_threshold, mosaic_workspace, out_table, pivot, merg
         else:
             newrow.setValue("YEAR", "Year {}".format(2000 + row[1]))
         newrow.setValue("TCD", tcd_threshold)
-        newrow.setValue("LOSS_HA", row[2]/10000)
+        newrow.setValue("LOSS_HA", row[2]*row[3]/10000)
         newrows.insertRow(newrow)
 
     if pivot:
