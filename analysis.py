@@ -391,5 +391,5 @@ if __name__ == "__main__":
     biomass_loss(r"C:\Users\Thomas.Maschler\Documents\Atlas\CMR\atlas_forestier.mdb\unites_administratives\departements",
                  30,
                  r"C:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb",
-                 "rC:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb\dep",
+                 r"C:\Users\Thomas.Maschler\Desktop\gabon\analysis.gdb\dep",
                  True, m)
